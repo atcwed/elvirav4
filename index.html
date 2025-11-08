@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>💊 Inventario Familiar de Pastillas</title>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+  <!-- Estilos vivos y modernos -->
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(180deg, #fef9c3, #bfdbfe);
+      margin: 0;
+      padding: 0;
+      color: #1e293b;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+    header {
+      background: linear-gradient(90deg, #2563eb, #16a34a, #eab308);
+      width: 100%;
+      padding: 15px 0;
+      color: white;
+      text-align: center;
+      font-size: 1.8em;
+      font-weight: bold;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+    }
+    .container {
+      max-width: 900px;
+      width: 90%;
+      background: #ffffffb3;
+      border-radius: 16px;
+      margin-top: 20px;
+      padding: 20px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    input, select, button {
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 1em;
+      margin: 5px;
+    }
+    button {
+      background: linear-gradient(90deg, #2563eb, #16a34a);
+      color: white;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    button:hover {
+      transform: scale(1.05);
+      opacity: 0.9;
+    }
+    .list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 15px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      transition: 0.2s;
+    }
+    .card:hover { transform: scale(1.02); }
+    .low { background: #fee2e2; }
+    .ok { background: #dcfce7; }
+    .title {
+      font-weight: bold;
+      font-size: 1.2em;
+      color: #0f172a;
+    }
+    .historial {
+      background: #f1f5f9;
+      border-radius: 12px;
+      padding: 10px;
+      margin-top: 20px;
+      max-height: 250px;
+      overflow-y: auto;
+    }
+    .historial div {
+      padding: 4px 0;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 0.95em;
+    }
+  </style>
+</head>
+<body>
+  <header>💊 Inventario Familiar de Pastillas</header>
+
+  <div class="container">
+    <h2>Agregar nueva pastilla</h2>
+    <div>
+      <input id="nombre" placeholder="Nombre de la pastilla">
+      <input id="cantidad" type="number" placeholder="Cantidad">
+      <input id="hora" type="time">
+      <input id="responsable" placeholder="Responsable">
+      <button onclick="agregarPastilla()">➕ Guardar</button>
+    </div>
+
+    <h2>Inventario actual</h2>
+    <div class="list" id="lista"></div>
+
+    <h2>Historial de tomas</h2>
+    <div id="historial" class="historial"></div>
+  </div>
+
+  <script>
+    // 🔥 Configuración Firebase (ya lista)
+    const firebaseConfig = {
+      apiKey: "AIzaSyAIL_YNhxBzn16bRW8VRvw7vBP812lN8pM",
+      authDomain: "inventarioabuela-db48f.firebaseapp.com",
+      databaseURL: "https://inventarioabuela-db48f-default-rtdb.firebaseio.com",
+      projectId: "inventarioabuela-db48f",
+      storageBucket: "inventarioabuela-db48f.firebasestorage.app",
+      messagingSenderId: "59938878894",
+      appId: "1:59938878894:web:a31b673d2ed9b5b759043f",
+      measurementId: "G-PVFKXM4CKM"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const lista = document.getElementById("lista");
+    const historialDiv = document.getElementById("historial");
+
+    // ➕ Agregar nueva pastilla
+    function agregarPastilla() {
+      const nombre = document.getElementById("nombre").value.trim();
+      const cantidad = parseInt(document.getElementById("cantidad").value);
+      const hora = document.getElementById("hora").value;
+      const responsable = document.getElementById("responsable").value.trim();
+
+      if (!nombre || !cantidad || !responsable) {
+        alert("Por favor completa todos los campos.");
+        return;
+      }
+
+      const ref = db.ref("pastillas").push();
+      ref.set({ nombre, cantidad, hora, responsable });
+      limpiarCampos();
+    }
+
+    function limpiarCampos() {
+      document.getElementById("nombre").value = "";
+      document.getElementById("cantidad").value = "";
+      document.getElementById("hora").value = "";
+      document.getElementById("responsable").value = "";
+    }
+
+    // 🔄 Mostrar inventario en tiempo real
+    db.ref("pastillas").on("value", (snapshot) => {
+      lista.innerHTML = "";
+      snapshot.forEach((child) => {
+        const p = child.val();
+        const id = child.key;
+        const color = p.cantidad <= 3 ? "low" : "ok";
+        const div = document.createElement("div");
+        div.className = `card ${color}`;
+        div.innerHTML = `
+          <div class="title">${p.nombre}</div>
+          <p><strong>Cantidad:</strong> ${p.cantidad}</p>
+          <p><strong>Hora:</strong> ${p.hora || "—"}</p>
+          <p><strong>Responsable:</strong> ${p.responsable}</p>
+          <button onclick="tomarPastilla('${id}', ${p.cantidad}, '${p.nombre}', '${p.responsable}')">💊 Tomar 1</button>
+          <button onclick="editar('${id}', '${p.nombre}', ${p.cantidad}, '${p.hora}', '${p.responsable}')">✏️ Editar</button>
+          <button onclick="eliminar('${id}')">🗑️ Eliminar</button>
+        `;
+        lista.appendChild(div);
+      });
+    });
+
+    // 💊 Tomar una pastilla
+    function tomarPastilla(id, cantidad, nombre, responsable) {
+      if (cantidad > 0) {
+        db.ref("pastillas/" + id + "/cantidad").set(cantidad - 1);
+        const fecha = new Date().toLocaleString("es-CO");
+        db.ref("historial").push({ nombre, responsable, fecha, accion: "Tomó 1 pastilla" });
+      } else {
+        alert("⚠️ No quedan pastillas de " + nombre);
+      }
+    }
+
+    // ✏️ Editar datos
+    function editar(id, nombre, cantidad, hora, responsable) {
+      const nuevoNombre = prompt("Nuevo nombre:", nombre) || nombre;
+      const nuevaCantidad = parseInt(prompt("Nueva cantidad:", cantidad)) || cantidad;
+      const nuevaHora = prompt("Nueva hora (HH:MM):", hora) || hora;
+      const nuevoResp = prompt("Nuevo responsable:", responsable) || responsable;
+      db.ref("pastillas/" + id).set({
+        nombre: nuevoNombre,
+        cantidad: nuevaCantidad,
+        hora: nuevaHora,
+        responsable: nuevoResp
+      });
+    }
+
+    // 🗑️ Eliminar
+    function eliminar(id) {
+      if (confirm("¿Seguro que deseas eliminar esta pastilla?")) {
+        db.ref("pastillas/" + id).remove();
+      }
+    }
+
+    // 📜 Historial en tiempo real
+    db.ref("historial").on("value", (snapshot) => {
+      historialDiv.innerHTML = "";
+      snapshot.forEach((child) => {
+        const h = child.val();
+        const div = document.createElement("div");
+        div.textContent = `🕓 ${h.fecha}: ${h.responsable} → ${h.accion} (${h.nombre})`;
+        historialDiv.appendChild(div);
+      });
+    });
+  </script>
+</body>
+</html>
